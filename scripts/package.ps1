@@ -16,7 +16,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'config/launcher.example.json') -Des
 foreach ($name in @('LICENSE','README.md','CONTRIBUTING.md','THIRD_PARTY_NOTICES.md','VERSION','Restore-Original-Entrypoints.cmd','Rescan-Entrypoints.cmd')) { Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $stage }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'animation/compositions/components/APACHE-2.0-LICENSE.txt') -Destination (Join-Path $stage 'licenses/APACHE-2.0-HyperFrames.txt')
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $stage -Recurse
-foreach ($name in @('Import-Animation.ps1','install-start-menu.ps1','integrate-entrypoints.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $stage 'scripts') }
+foreach ($name in @('Import-Animation.ps1','install-start-menu.ps1','integrate-entrypoints.ps1','Enable-ImageWallpaper.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $stage 'scripts') }
 New-Item -ItemType Directory -Path (Join-Path $stage 'media') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'media/MEDIA_NOTICE.md') -Destination (Join-Path $stage 'media/MEDIA_NOTICE.md')
 if (!$WithoutMedia) {

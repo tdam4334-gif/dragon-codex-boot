@@ -3,6 +3,7 @@
   "ScanAllLocalDrives": true,
   "Video": "media/startup.mp4",
   "AppLaunch": "shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App",
+  "UseImageWallpaper": false,
   "ProcessPathContains": "OpenAI.Codex_",
   "ProcessNames": [
     "ChatGPT",

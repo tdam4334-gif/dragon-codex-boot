@@ -29,6 +29,7 @@ namespace DragonCodexBoot {
   public string DisplayName { get; set; }
   public string Video { get; set; }
   public string AppLaunch { get; set; }
+  public bool UseImageWallpaper { get; set; }
   public string ProcessPathContains { get; set; }
   public string[] ProcessNames { get; set; }
   public double HoldAt { get; set; }
@@ -188,6 +189,8 @@ namespace DragonCodexBoot {
   private double stableSince,lastProbe=-1;
   private bool ready,opened,holding,closing,startedFade,thumbnailFailed;
   private bool timeoutReported;
+  private Process wallpaperProcess;
+  private bool wallpaperAttempted,wallpaperResolved,wallpaperFallback;
   private int launchAttempts;
   private double lastLaunch;
   private double endedAt=-1;
@@ -228,7 +231,7 @@ namespace DragonCodexBoot {
    };
    Loaded+=delegate {
     wall.Start();
-    if(target==IntPtr.Zero)LaunchApp();
+    if(target==IntPtr.Zero||cfg.UseImageWallpaper)LaunchApp();
     media.Source=new Uri(Path.GetFullPath(Path.Combine(root,cfg.Video)));
     media.Play();timer.Start();Log("started fixed-player="+initialBounds.Width+"x"+initialBounds.Height
      +" at "+initialBounds.Left+","+initialBounds.Top);
@@ -264,16 +267,45 @@ namespace DragonCodexBoot {
   }
   private void LaunchApp() {
    try {
+    if(cfg.UseImageWallpaper&&!wallpaperAttempted) {
+     wallpaperAttempted=true;
+     string script=Path.Combine(root,"skin-runtime","scripts","start-dream-skin.ps1");
+     if(!File.Exists(script)) { Log("wallpaper-runtime-missing");wallpaperResolved=true; }
+     else {
+      string powershell=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe");
+      wallpaperProcess=Process.Start(new ProcessStartInfo(powershell,"-NoProfile -ExecutionPolicy RemoteSigned -File \""+script+"\"") {
+       UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(script),WindowStyle=ProcessWindowStyle.Hidden
+      });
+      lastLaunch=wall.Elapsed.TotalSeconds;launchAttempts++;
+      Log("wallpaper-start-requested");
+      return;
+     }
+    }
     // Shell launches the packaged desktop app; its CLI helper is never used as a UI executable.
     Process.Start(new ProcessStartInfo("explorer.exe",cfg.AppLaunch) { UseShellExecute=true });
     lastLaunch=wall.Elapsed.TotalSeconds;launchAttempts++;
     Log("app-launch-requested attempt="+launchAttempts);
     if(launchAttempts>1) { status.Text="已再次请求打开 Codex，正在等待窗口…";status.Visibility=Visibility.Visible; }
-   } catch(Exception e) { Log("app-launch-failed: "+e.Message);status.Text="无法自动打开 Codex，请检查安装后重试";status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible; }
+   } catch(Exception e) {
+    Log("app-launch-failed: "+e.Message);
+    if(cfg.UseImageWallpaper&&wallpaperAttempted&&!wallpaperResolved) {
+     wallpaperResolved=true;wallpaperFallback=true;LaunchApp();return;
+    }
+    wallpaperResolved=true;status.Text="无法自动打开 Codex，请检查安装后重试";
+    status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible;
+   }
   }
   private void Probe() {
    double now=wall.Elapsed.TotalSeconds;
    if(now-lastProbe<.25)return;lastProbe=now;
+   if(cfg.UseImageWallpaper&&!wallpaperResolved) {
+    if(wallpaperProcess!=null&&wallpaperProcess.HasExited) {
+     int code=wallpaperProcess.ExitCode;
+     wallpaperProcess.Dispose();wallpaperProcess=null;wallpaperResolved=true;
+     Log("wallpaper-start-exit="+code);
+     if(code!=0&&!wallpaperFallback) { wallpaperFallback=true;LaunchApp(); }
+    } else { ready=false;return; }
+   }
    IntPtr candidate=Native.FindApp(cfg);
    if(candidate==IntPtr.Zero||!Native.Responsive(candidate)) { ready=false;stableHandle=IntPtr.Zero;return; }
    if(Native.IsIconic(candidate))Native.ShowWindow(candidate,9);
@@ -294,7 +326,8 @@ namespace DragonCodexBoot {
   private void Tick(object sender,EventArgs e) {
    if(closing)return;
    Probe();
-   if(!ready&&launchAttempts>0&&launchAttempts<3&&wall.Elapsed.TotalSeconds-lastLaunch>=10)LaunchApp();
+   if(!ready&&launchAttempts>0&&launchAttempts<3&&wall.Elapsed.TotalSeconds-lastLaunch>=10
+    &&(!cfg.UseImageWallpaper||wallpaperResolved))LaunchApp();
    if(!ready&&wall.Elapsed.TotalSeconds>cfg.MaxWaitSeconds+20&&!timeoutReported) {
     timeoutReported=true;Log("wait-timeout-no-window");
     status.Text="未检测到 Codex 窗口。可重试启动，或关闭此窗口查看日志。";

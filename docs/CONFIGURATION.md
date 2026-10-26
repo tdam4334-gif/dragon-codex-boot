@@ -7,6 +7,7 @@
 | `DisplayName` | 播放窗口的显示名 |
 | `Video` | 本地 MP4，相对路径以可执行文件目录为基准，也可写绝对路径 |
 | `AppLaunch` | 已安装客户端的 `shell:AppsFolder\包族名!应用ID` |
+| `UseImageWallpaper` | 使用本地图片背景；需要先运行 `scripts/Enable-ImageWallpaper.ps1` 安装固定版本的社区换肤引擎，默认 `false` |
 | `ProcessNames` | 客户端进程名列表，不带 `.exe` |
 | `ProcessPathContains` | 可执行文件路径中必须出现的字符串，用来区分同名进程 |
 | `HoldAt` | 客户端未就绪时暂停视频的位置，单位秒 |
@@ -26,6 +27,22 @@ Get-StartApps | Where-Object { $_.Name -match 'ChatGPT|Codex' }
 ```
 
 示例配置使用 `OpenAI.Codex_2p2nqsd0c76g0!App`。这来自项目开发机，不保证每个发行渠道都相同；用本机实际结果更新 `AppLaunch`。进程名和路径过滤也要与实际安装匹配。
+
+## 图片背景与开机动画衔接
+
+先准备一张本地 PNG/JPEG/WebP 图片，再在启动器解压目录执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\Enable-ImageWallpaper.ps1 -Image "C:\Path\To\wallpaper.png"
+```
+
+脚本会从 [CCDawn/Codex-Dynamic-Skin](https://github.com/CCDawn/Codex-Dynamic-Skin) 获取固定提交 `5a0e74043b63ed9518ab37cdcf6865340a57006c`，核对提交，复制 Windows 运行源码到 `skin-runtime/`，将图片复制到用户本机主题仓库，并启用 `UseImageWallpaper`。可传 `-RevealPercent 0..100` 控制画面透出度。运行时只使用本机回环 CDP，不改官方程序文件；依赖已安装的 Node.js。
+
+配置脚本下载源码还需要 Git 和网络。社区项目说明已适配到 Codex `26.915`；较新的 Store 客户端存在[无法建立 CDP 的报告](https://github.com/Fei-Away/Codex-Dream-Skin/issues/442)，因此具体版本需要实际启动验证。若 CDP 不可用，启动器会回退到正常客户端，不能保证显示图片背景。
+
+首次使用先正常关闭当前 Codex，再从 `DragonCodexBoot.exe` 启动。社区引擎会用独立的本机调试配置，可能需要重新登录。动画在引擎完成画面验证后才切到聊天页；若启动失败则打开原版客户端并在 `logs/launcher.log` 记录结果。此方案使用本机调试端口，其他本机程序也可能访问该会话；结束换肤会话需退出对应 Codex 进程。官方更新后如果界面结构变化，可能需要更新社区引擎的适配版本。
+
+恢复原版启动：将 `launcher.json` 的 `UseImageWallpaper` 改回 `false`，关闭并重新打开 Codex。背景图片仍保存在本机 `CodexDreamSkin` 目录，可按需删除。
 
 ## 校准视频中的屏幕
 

@@ -3,7 +3,8 @@ $repoRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $files=@(& git -c core.quotePath=false -C $repoRoot ls-files)
 if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) { throw 'No tracked repository files. Initialize and stage the clean source first.' }
 foreach ($name in $files) {
-    if ($name -eq 'media/startup.mp4' -or $name -eq 'animation/assets/lu-mingfei-cyber.png') {
+    if ($name -eq 'media/startup.mp4' -or $name -eq 'animation/assets/lu-mingfei-cyber.png' -or
+        $name -eq 'animation/assets/lu-mingfei-workspace-bg.png') {
         if ((Get-Item -LiteralPath (Join-Path $repoRoot $name)).Length -ge 100MB) { throw ('Approved media exceeds the regular Git file limit: '+$name) }
         continue
     }
