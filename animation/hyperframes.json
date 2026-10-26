@@ -8,5 +8,12 @@
   },
   "media": {
     "autoProxy": true
-  }
+  },
+  "registryItems": [
+    {
+      "name": "scan-band",
+      "type": "hyperframes:component",
+      "target": "compositions/components/scan-band.html"
+    }
+  ]
 }
