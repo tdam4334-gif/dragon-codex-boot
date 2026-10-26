@@ -30,10 +30,11 @@
     .scene-two .trace { position: absolute; left: 1060px; top: 765px; width: 645px; height: 100px; }
     .scene-three .intro { position: absolute; left: 0; right: 0; top: 142px; text-align: center; color: #ffa8ad; font: 20px Consolas, monospace; letter-spacing: .27em; }
     #portal { position: absolute; left: 400px; top: 225px; width: 1120px; height: 630px; transform-origin: center center; border: 2px solid #ff5a61; border-radius: 18px; overflow: hidden; background: radial-gradient(circle at 15% 50%, #2d1219, #0b080e 64%); box-shadow: 0 0 0 12px #ff33331b, 0 0 95px #f9232355; }
-    #portal .bar { height: 64px; border-bottom: 1px solid #793f46; display: flex; align-items: center; padding: 0 30px; gap: 11px; font: 19px Consolas, monospace; letter-spacing: .14em; color: #e2afb2; }
+    #portal .workspace-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
+    #portal .bar { position: relative; height: 64px; border-bottom: 1px solid #793f46; display: flex; align-items: center; padding: 0 30px; gap: 11px; font: 19px Consolas, monospace; letter-spacing: .14em; color: #e2afb2; background: #0b080ea8; }
     #portal .dot { width: 10px; height: 10px; border-radius: 50%; background: #9c484e; }.dot:first-child { background: #ff7b76; }
     #portal .brand { margin-left: 23px; color: #fff1f0; }
-    #portal .content { padding: 98px 100px; }
+    #portal .content { position: relative; padding: 98px 100px; text-shadow: 0 2px 18px #08050bcc; }
     #portal .prompt { color: #ff8186; font: 23px Consolas, monospace; letter-spacing: .13em; }
     #portal .ready { margin-top: 23px; font: bold 88px Arial, sans-serif; letter-spacing: -.045em; color: #fff7f6; }
     #portal .desc { margin-top: 19px; color: #d6afb2; font: 26px Arial, sans-serif; }
@@ -61,7 +62,7 @@
     </section>
     <section data-hf-id="hf-1xsl" id="handoff" class="clip scene-three" data-start="10.3" data-duration="4.1" data-track-index="3">
       <div data-hf-id="hf-t5z8" class="intro" id="intro">03 / HANDOFF TO LIVE WORKSPACE</div>
-      <div data-hf-id="hf-05sn" id="portal"><div data-hf-id="hf-ufsv" class="bar"><i data-hf-id="hf-6bgx" class="dot"></i><i data-hf-id="hf-0j5x" class="dot"></i><i data-hf-id="hf-1q30" class="dot"></i><span data-hf-id="hf-d3rb" class="brand">CODEX</span></div><div data-hf-id="hf-mcm7" class="content"><div data-hf-id="hf-2dx0" class="prompt">&gt; ready when you are</div><div data-hf-id="hf-lin8" class="ready">Let's build<span data-hf-id="hf-fwxv" class="cursor" id="cursor"></span></div><div data-hf-id="hf-k7nr" class="desc">Your workspace is opening.</div></div></div>
+      <div data-hf-id="hf-05sn" id="portal"><img data-hf-id="hf-workspace-bg" class="workspace-bg" src="assets/lu-mingfei-workspace-bg.png" alt="" /><div data-hf-id="hf-ufsv" class="bar"><i data-hf-id="hf-6bgx" class="dot"></i><i data-hf-id="hf-0j5x" class="dot"></i><i data-hf-id="hf-1q30" class="dot"></i><span data-hf-id="hf-d3rb" class="brand">CODEX</span></div><div data-hf-id="hf-mcm7" class="content"><div data-hf-id="hf-2dx0" class="prompt">&gt; ready when you are</div><div data-hf-id="hf-lin8" class="ready">Let's build<span data-hf-id="hf-fwxv" class="cursor" id="cursor"></span></div><div data-hf-id="hf-k7nr" class="desc">Your workspace is opening.</div></div></div>
       <div data-hf-id="hf-50y3" class="handoff" id="handoff-label">LIVE WINDOW CONNECTING</div>
     </section>
     <audio data-hf-id="hf-zbyz" id="boot-audio" data-start="0" data-duration="14.4" src="assets/boot.wav"></audio>
@@ -83,6 +84,7 @@
     tl.to('#side-title',{x:65,opacity:0,duration:.6,ease:'power2.in'},9.6).to('#signal',{x:50,opacity:0,duration:.5,ease:'power2.in'},9.7);
     tl.to('#art',{scale:1.08,opacity:0,duration:1.0,ease:'power2.inOut'},10.15).to('#art-dark',{opacity:0,duration:.6},10.3);
     tl.fromTo('#portal',{scale:.62,opacity:0},{scale:1,opacity:1,duration:1.3,ease:'power3.out'},10.3);
+    tl.fromTo('#portal .workspace-bg',{opacity:0},{opacity:.72,duration:.7,ease:'power2.inOut'},10.85);
     tl.fromTo('#intro',{y:-25,opacity:0},{y:0,opacity:1,duration:.7,ease:'power2.out'},10.5);
     tl.fromTo('#handoff-label',{y:20,opacity:0},{y:0,opacity:1,duration:.6,ease:'power2.out'},11.15);
     tl.to('#cursor',{opacity:.15,duration:.25,ease:'steps(1)'},11.75).to('#cursor',{opacity:1,duration:.25,ease:'steps(1)'},12.0);

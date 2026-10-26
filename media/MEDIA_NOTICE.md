@@ -1,6 +1,6 @@
 # 随附演示视频
 
-`startup.mp4` 是本项目随附的红黑电子风 Codex 主题启动动画，供完整启动器示例播放与演示。人物背景 `animation/assets/lu-mingfei-cyber.png` 根据用户提供的路明非插画参考生成；它不是原图的直接放大。视频规格：1920×1080，30 fps，14.4 秒，包含由 `animation/generate_audio.py` 合成的原声音轨。可编辑动画源码位于 `animation/`。
+`startup.mp4` 是本项目随附的红黑电子风 Codex 主题启动动画，供完整启动器示例播放与演示。人物背景 `animation/assets/lu-mingfei-cyber.png` 根据用户提供的路明非插画参考生成；收尾背景 `animation/assets/lu-mingfei-workspace-bg.png` 再以横版人物背景为参考生成，均不是原图的直接放大。视频规格：1920×1080，30 fps，14.4 秒，包含由 `animation/generate_audio.py` 合成的原声音轨。可编辑动画源码位于 `animation/`。
 
 该视频由动画源码渲染。软件源码的 MIT 许可证不自动适用于人物背景、角色形象或视频，也不对第三方名称或标志追加授权。路明非角色及参考图像可能涉及第三方权利；在公开分发或商用前，使用者应自行确认相应授权。动画是社区作品，不代表 OpenAI 官方视觉设计。
 
