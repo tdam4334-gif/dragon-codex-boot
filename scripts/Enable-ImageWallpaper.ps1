@@ -50,6 +50,36 @@ try {
   foreach ($folder in @('assets','scripts','presets')) {
     Copy-Item -LiteralPath (Join-Path $windows $folder) -Destination $stage -Recurse -Force
   }
+  # Windows Store file virtualization can report a media file beneath
+  # Packages/.../LocalCache while its parent theme directory retains the
+  # ordinary LocalAppData path. Accept that alias only when both directory
+  # paths identify the same filesystem directory and the media is a sibling.
+  $injectorPath = Join-Path $stage 'scripts/injector.mjs'
+  $injectorSource = [IO.File]::ReadAllText($injectorPath)
+  $originalGuard = 'if (!wallpaperEngineReference && !isPathInside(realThemeDir, realMediaPath)) {'
+  if ($injectorSource.Split([string[]]@($originalGuard),[StringSplitOptions]::None).Count -ne 2) {
+    throw 'Pinned upstream media guard changed; review the Windows virtualization fix.'
+  }
+  $patchedGuard = @'
+if (!wallpaperEngineReference && !isPathInside(realThemeDir, realMediaPath)) {
+    const sourceParent = path.dirname(sourceMediaPath);
+    const mediaParent = path.dirname(realMediaPath);
+    const sourceStat = await fs.stat(sourceParent);
+    const mediaStat = await fs.stat(mediaParent);
+    const sameVirtualizedDirectory = process.platform === "win32" &&
+      path.basename(sourceMediaPath).toLowerCase() === path.basename(realMediaPath).toLowerCase() &&
+      sourceParent.toLowerCase() === realThemeDir.toLowerCase() &&
+      sourceStat.dev === mediaStat.dev && sourceStat.ino === mediaStat.ino;
+    if (!sameVirtualizedDirectory) {
+'@
+  $injectorSource = $injectorSource.Replace($originalGuard,$patchedGuard)
+  $newline = if ($injectorSource.Contains("`r`n")) { "`r`n" } else { "`n" }
+  $closingGuard = 'throw new Error("Theme media cannot escape through a link or junction");' + $newline + '  }'
+  if ($injectorSource.Split([string[]]@($closingGuard),[StringSplitOptions]::None).Count -ne 2) {
+    throw 'Pinned upstream media guard ending changed; review the Windows virtualization fix.'
+  }
+  $injectorSource = $injectorSource.Replace($closingGuard,'throw new Error("Theme media cannot escape through a link or junction");' + $newline + '    }' + $newline + '  }')
+  [IO.File]::WriteAllText($injectorPath,$injectorSource,[Text.UTF8Encoding]::new($false))
   Copy-Item -LiteralPath (Join-Path $windows 'VERSION') -Destination $stage
   Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $stage 'UPSTREAM-LICENSE')
   [IO.File]::WriteAllText((Join-Path $stage 'UPSTREAM.txt'),"$upstream`r`n$commit`r`n",[Text.UTF8Encoding]::new($false))
