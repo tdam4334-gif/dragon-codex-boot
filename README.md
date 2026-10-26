@@ -2,7 +2,7 @@
 
 为 Codex 桌面客户端播放自定义启动动画，并把动画结尾自然交接到真实、可操作的软件窗口。仓库包含 Windows 和 macOS 实现。
 
-**社区独立项目，与 OpenAI 无隶属关系。** 源码使用 MIT 许可证。仓库与默认程序包包含一段完整的 1080p 龙娘启动动画，解压即可播放，也支持换成自己的 MP4。视频许可说明见 [随附媒体说明](media/MEDIA_NOTICE.md)。
+**社区独立项目，与 OpenAI 无隶属关系。** 源码使用 MIT 许可证。仓库与默认程序包包含一段完整的 1080p Codex 主题启动动画，解压即可播放，也支持换成自己的 MP4。可编辑动画源码在 `animation/`，视频许可说明见 [随附媒体说明](media/MEDIA_NOTICE.md)。
 
 ## macOS 版本
 
@@ -22,7 +22,7 @@ macOS 的淡出会揭示 Codex 当前窗口；它不复刻 Windows 版依靠 DWM
 
 支持 `Esc` 跳过、自定义音量、衔接时段、屏幕矩形关键帧，以及首次运行时自动替换启动快捷方式。DWM 连接失败时使用淡出交接。
 
-默认配置来自一段约 14 秒、16:9 的动画：11.3 秒等待节点，12.7–13.65 秒交接。这些时间和屏幕坐标必须按自己的视频修改，**不是适用于所有视频的通用模板**。
+默认配置来自一段 14.4 秒、16:9 的动画：11.65 秒等待节点，12.45–13.95 秒交接。这些时间和屏幕坐标必须按自己的视频修改，**不是适用于所有视频的通用模板**。
 
 ## Windows 版环境
 
@@ -138,6 +138,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 ## 项目结构
 
 ```text
+animation/                   可编辑动画源码与原声音轨生成脚本
 src/                         C# WPF 启动器与 DPI 清单
 config/launcher.example.json 公开配置模板
 config/launcher.macos.example.json macOS 配置模板

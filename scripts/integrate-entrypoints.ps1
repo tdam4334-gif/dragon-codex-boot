@@ -32,7 +32,14 @@ $report=[ordered]@{
         'Shared shortcuts require write permission. Taskbar pins may need unpinning and repinning.',
         'Inaccessible, reparse, system/runtime/cache folders and the launcher folder are skipped; scanning has a time budget.')
 }
-function Hash([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash }
+function Hash([string]$Path) {
+    # Use the framework already required by the launcher. This also works when
+    # PowerShell module auto-loading is unavailable in the child process.
+    $stream=[IO.File]::OpenRead($Path)
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','') }
+    finally { $stream.Dispose();$sha.Dispose() }
+}
 function Write-Json([string]$Path,$Value) {
     $temp=$Path+'.'+[Guid]::NewGuid().ToString('N')+'.tmp'
     $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $temp -Encoding UTF8
