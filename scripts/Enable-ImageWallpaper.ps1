@@ -118,7 +118,16 @@ if (!wallpaperEngineReference && !isPathInside(realThemeDir, realMediaPath)) {
     }
     $startSource = $startSource.Replace($old,$new)
   }
-  [IO.File]::WriteAllText($startPath,$startSource,[Text.UTF8Encoding]::new($false))
+  # The launcher invokes Windows PowerShell 5.1, which reads a BOM-less .ps1
+  # using the local ANSI code page. Preserve the upstream script's Chinese
+  # strings by writing a UTF-8 BOM, then parse it with that exact runtime.
+  [IO.File]::WriteAllText($startPath,$startSource,[Text.UTF8Encoding]::new($true))
+  $windowsPowerShell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+  $quotedStartPath = "'" + $startPath.Replace("'","''") + "'"
+  $parseCommand = '$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile(' +
+    $quotedStartPath + ',[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count){$errors|ForEach-Object{$_.Message};exit 1}'
+  & $windowsPowerShell -NoProfile -Command $parseCommand | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 could not parse the startup script.' }
   Copy-Item -LiteralPath (Join-Path $windows 'VERSION') -Destination $stage
   Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $stage 'UPSTREAM-LICENSE')
   [IO.File]::WriteAllText((Join-Path $stage 'UPSTREAM.txt'),"$upstream`r`n$commit`r`n",[Text.UTF8Encoding]::new($false))

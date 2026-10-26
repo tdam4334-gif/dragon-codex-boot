@@ -190,6 +190,7 @@ namespace DragonCodexBoot {
   private bool ready,opened,holding,closing,startedFade,thumbnailFailed;
   private bool timeoutReported;
   private Process wallpaperProcess;
+  private readonly object logSync=new object();
   private bool wallpaperAttempted,wallpaperResolved,wallpaperFallback;
   private int launchAttempts;
   private double lastLaunch;
@@ -277,8 +278,12 @@ namespace DragonCodexBoot {
      else {
       string powershell=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe");
       wallpaperProcess=Process.Start(new ProcessStartInfo(powershell,"-NoProfile -ExecutionPolicy RemoteSigned -File \""+script+"\" -RestartExisting") {
-       UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(script),WindowStyle=ProcessWindowStyle.Hidden
+       UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(script),WindowStyle=ProcessWindowStyle.Hidden,
+       RedirectStandardOutput=true,RedirectStandardError=true
       });
+      wallpaperProcess.OutputDataReceived+=delegate(object sender,DataReceivedEventArgs e) { if(e.Data!=null)Log("wallpaper-out: "+e.Data); };
+      wallpaperProcess.ErrorDataReceived+=delegate(object sender,DataReceivedEventArgs e) { if(e.Data!=null)Log("wallpaper-error: "+e.Data); };
+      wallpaperProcess.BeginOutputReadLine();wallpaperProcess.BeginErrorReadLine();
       lastLaunch=wall.Elapsed.TotalSeconds;launchAttempts++;
       Log("wallpaper-start-requested");
       return;
@@ -375,6 +380,7 @@ namespace DragonCodexBoot {
   }
   private void HandOff() {
    if(closing)return;
+   if(cfg.UseImageWallpaper&&(wallpaperFallback||!wallpaperResolved)) { Log("handoff-blocked-wallpaper-not-ready");return; }
    IntPtr app=Native.FindApp(cfg);
    if(app!=IntPtr.Zero) {
     closing=true;timer.Stop();DropThumbnail();
@@ -390,9 +396,11 @@ namespace DragonCodexBoot {
   }
   private void Log(string s) {
    try {
-    Directory.CreateDirectory(Path.Combine(root,"logs"));
-    string line=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")+" "+s+Environment.NewLine;
-    File.AppendAllText(Path.Combine(root,"logs","launcher.log"),line);
+    lock(logSync) {
+     Directory.CreateDirectory(Path.Combine(root,"logs"));
+     string line=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")+" "+s+Environment.NewLine;
+     File.AppendAllText(Path.Combine(root,"logs","launcher.log"),line);
+    }
    } catch {}
   }
  }
