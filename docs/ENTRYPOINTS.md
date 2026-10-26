@@ -42,7 +42,7 @@
 
 因此这项功能是可恢复的快捷方式替换，不能声称所有启动路径都已接管。默认设置尽量覆盖本机可识别的入口，报告同时保留 `RegisteredApplicationChanged: false`、`StartPinsAutomaticallyChanged: false` 和 `TaskbarCacheRefreshVerified: false`。
 
-本机已固定的官方 Codex/ChatGPT 图标会继续直接启动官方应用。要从任务栏播放动画：右键取消固定原图标，然后在桌面找到由本项目创建的 `ChatGPT` 快捷方式，右键固定到任务栏。固定后先退出 Codex，再点击新图标验证。不要仅以图标外观判断：桌面快捷方式的目标应是 `DragonCodexBoot.exe`。启动器会在找不到官方窗口时自动重试，并在超时后保留错误提示和手动重试按钮；日志在 `logs/launcher.log`。
+本机已固定的官方 Codex/ChatGPT 图标会继续直接启动官方应用。要从任务栏播放动画：右键取消固定原图标，然后在“开始”菜单搜索 `Dragon Codex Boot`，右键搜索结果固定到任务栏。固定后先退出 Codex，再点击新图标验证。这个独立开始菜单入口的目标是 `DragonCodexBoot.exe`。启动器会在找不到官方窗口时自动重试，并在超时后保留错误提示和手动重试按钮；日志在 `logs/launcher.log`。
 
 ## 迁移与卸载
 

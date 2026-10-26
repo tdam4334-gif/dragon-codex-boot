@@ -241,6 +241,11 @@ try {
             $dir=[Environment]::GetFolderPath($folder)
             if ($dir -and (Test-Path -LiteralPath $dir -PathType Container)) { Replace-Link (Join-Path $dir $name) $true }
         }
+        # A distinct Start entry lets Windows offer a taskbar pin without confusing it with the MSIX app.
+        $programs=[Environment]::GetFolderPath('Programs')
+        if ($programs -and (Test-Path -LiteralPath $programs -PathType Container)) {
+            Replace-Link (Join-Path $programs 'Dragon Codex Boot.lnk') $true
+        }
     }
     $report.Status=if ($report.Errors.Count -or $report.ScanTimedOut -or $report.SkippedFolders) { 'CompletedWithLimits' } else { 'Completed' }
 } catch {
