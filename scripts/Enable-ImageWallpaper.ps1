@@ -80,11 +80,55 @@ if (!wallpaperEngineReference && !isPathInside(realThemeDir, realMediaPath)) {
   }
   $injectorSource = $injectorSource.Replace($closingGuard,'throw new Error("Theme media cannot escape through a link or junction");' + $newline + '    }' + $newline + '  }')
   [IO.File]::WriteAllText($injectorPath,$injectorSource,[Text.UTF8Encoding]::new($false))
+  # Keep the launch theme beside this runtime. A Store process can virtualize
+  # LOCALAPPDATA independently of the launcher, so its active-theme path is
+  # not a reliable source of truth across process boundaries.
+  $pinnedTheme = Join-Path $stage 'dragon-wallpaper'
+  New-Item -ItemType Directory -Path $pinnedTheme -Force | Out-Null
+  $extension = [IO.Path]::GetExtension($imagePath).ToLowerInvariant()
+  if ($extension -notin @('.png','.jpg','.jpeg','.webp')) { throw "Unsupported wallpaper image: $extension" }
+  $pinnedImageName = 'wallpaper' + $extension
+  Copy-Item -LiteralPath $imagePath -Destination (Join-Path $pinnedTheme $pinnedImageName) -Force
+  $pinnedConfig = [ordered]@{
+    schemaVersion = 1; id = 'custom'; appearance = 'auto'
+    art = [ordered]@{ focusX = $null; focusY = $null; safeArea = 'auto'; taskMode = 'auto' }
+    image = $pinnedImageName
+    media = [ordered]@{ type = 'image'; playbackRate = 1.0; opacity = $RevealPercent / 100.0 }
+    name = 'dragon-codex-wallpaper'
+  }
+  [IO.File]::WriteAllText((Join-Path $pinnedTheme 'theme.json'),($pinnedConfig | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
+  $startPath = Join-Path $stage 'scripts/start-dream-skin.ps1'
+  $startSource = [IO.File]::ReadAllText($startPath)
+  $initAnchor = '  $themePaths = Initialize-DreamSkinThemeStore -SkillRoot (Split-Path -Parent $PSScriptRoot) -StateRoot $StateRoot'
+  if ($startSource.Split([string[]]@($initAnchor),[StringSplitOptions]::None).Count -ne 2) {
+    throw 'Pinned upstream theme initialization changed; review the launch theme fix.'
+  }
+  $startSource = $startSource.Replace($initAnchor,$initAnchor + $newline +
+    '  $pinnedThemeDir = Join-Path (Split-Path -Parent $PSScriptRoot) ''dragon-wallpaper''')
+  $replacements = @(
+    @("'--theme-dir', `$themePaths.Active","'--theme-dir', `$pinnedThemeDir",4),
+    @('--theme-dir $themePaths.Active','--theme-dir $pinnedThemeDir',1),
+    @('(ConvertTo-DreamSkinProcessArgument -Value $themePaths.Active)','(ConvertTo-DreamSkinProcessArgument -Value $pinnedThemeDir)',1),
+    @('themeDir = $themePaths.Active','themeDir = $pinnedThemeDir',1)
+  )
+  foreach ($replacement in $replacements) {
+    $old = [string]$replacement[0]; $new = [string]$replacement[1]; $expected = [int]$replacement[2]
+    if ($startSource.Split([string[]]@($old),[StringSplitOptions]::None).Count -ne ($expected + 1)) {
+      throw "Pinned upstream launch reference changed: $old"
+    }
+    $startSource = $startSource.Replace($old,$new)
+  }
+  [IO.File]::WriteAllText($startPath,$startSource,[Text.UTF8Encoding]::new($false))
   Copy-Item -LiteralPath (Join-Path $windows 'VERSION') -Destination $stage
   Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $stage 'UPSTREAM-LICENSE')
   [IO.File]::WriteAllText((Join-Path $stage 'UPSTREAM.txt'),"$upstream`r`n$commit`r`n",[Text.UTF8Encoding]::new($false))
   & (Join-Path $stage 'scripts/manager-command.ps1') -Action SetWallpaper -Path $imagePath | Out-Null
   & (Join-Path $stage 'scripts/manager-command.ps1') -Action SetReveal -Percent $RevealPercent | Out-Null
+  $payloadCheck = & node $injectorPath --check-payload --theme-dir $pinnedTheme | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or !$payloadCheck.pass -or $payloadCheck.themeId -ne 'custom' -or
+      [int64]$payloadCheck.media.size -ne (Get-Item -LiteralPath $imagePath).Length) {
+    throw 'Pinned wallpaper payload did not validate.'
+  }
   if ($hadExisting) { Move-Item -LiteralPath $current -Destination $backup; $movedExisting = $true }
   Move-Item -LiteralPath $stage -Destination $current
   $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
