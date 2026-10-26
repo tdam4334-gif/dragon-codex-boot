@@ -221,7 +221,10 @@ namespace DragonCodexBoot {
    retry=new Button { Content="重新打开 Codex",HorizontalAlignment=HorizontalAlignment.Center,
     VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(20,20,20,72),Padding=new Thickness(18,8,18,8),
     Background=Brushes.White,Foreground=new SolidColorBrush(Color.FromRgb(118,97,135)),Visibility=Visibility.Collapsed };
-   retry.Click+=delegate { LaunchApp(); };
+   retry.Click+=delegate {
+    if(cfg.UseImageWallpaper) { wallpaperAttempted=false;wallpaperResolved=false;wallpaperFallback=false;launchAttempts=0; }
+    LaunchApp();
+   };
    grid.Children.Add(retry);
    PreviewKeyDown+=delegate(object sender,KeyEventArgs e) { if(e.Key==Key.Escape) { e.Handled=true;HandOff(); } };
    SourceInitialized+=delegate {
@@ -270,10 +273,10 @@ namespace DragonCodexBoot {
     if(cfg.UseImageWallpaper&&!wallpaperAttempted) {
      wallpaperAttempted=true;
      string script=Path.Combine(root,"skin-runtime","scripts","start-dream-skin.ps1");
-     if(!File.Exists(script)) { Log("wallpaper-runtime-missing");wallpaperResolved=true; }
+     if(!File.Exists(script)) { Log("wallpaper-runtime-missing");throw new FileNotFoundException("动态壁纸运行组件不存在",script); }
      else {
       string powershell=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe");
-      wallpaperProcess=Process.Start(new ProcessStartInfo(powershell,"-NoProfile -ExecutionPolicy RemoteSigned -File \""+script+"\"") {
+      wallpaperProcess=Process.Start(new ProcessStartInfo(powershell,"-NoProfile -ExecutionPolicy RemoteSigned -File \""+script+"\" -RestartExisting") {
        UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(script),WindowStyle=ProcessWindowStyle.Hidden
       });
       lastLaunch=wall.Elapsed.TotalSeconds;launchAttempts++;
@@ -288,10 +291,8 @@ namespace DragonCodexBoot {
     if(launchAttempts>1) { status.Text="已再次请求打开 Codex，正在等待窗口…";status.Visibility=Visibility.Visible; }
    } catch(Exception e) {
     Log("app-launch-failed: "+e.Message);
-    if(cfg.UseImageWallpaper&&wallpaperAttempted&&!wallpaperResolved) {
-     wallpaperResolved=true;wallpaperFallback=true;LaunchApp();return;
-    }
-    wallpaperResolved=true;status.Text="无法自动打开 Codex，请检查安装后重试";
+    wallpaperResolved=true;wallpaperFallback=true;
+    status.Text=cfg.UseImageWallpaper?"动态壁纸启动失败，请检查组件并重试":"无法自动打开 Codex，请检查安装后重试";
     status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible;
    }
   }
@@ -303,9 +304,14 @@ namespace DragonCodexBoot {
      int code=wallpaperProcess.ExitCode;
      wallpaperProcess.Dispose();wallpaperProcess=null;wallpaperResolved=true;
      Log("wallpaper-start-exit="+code);
-     if(code!=0&&!wallpaperFallback) { wallpaperFallback=true;LaunchApp(); }
+     if(code!=0) {
+      wallpaperFallback=true;
+      status.Text="动态壁纸启动失败（代码 "+code+"），请重试或检查运行日志";
+      status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible;
+     }
     } else { ready=false;return; }
    }
+   if(cfg.UseImageWallpaper&&wallpaperFallback) { ready=false;return; }
    IntPtr candidate=Native.FindApp(cfg);
    if(candidate==IntPtr.Zero||!Native.Responsive(candidate)) { ready=false;stableHandle=IntPtr.Zero;return; }
    if(Native.IsIconic(candidate))Native.ShowWindow(candidate,9);
@@ -326,8 +332,8 @@ namespace DragonCodexBoot {
   private void Tick(object sender,EventArgs e) {
    if(closing)return;
    Probe();
-   if(!ready&&launchAttempts>0&&launchAttempts<3&&wall.Elapsed.TotalSeconds-lastLaunch>=10
-    &&(!cfg.UseImageWallpaper||wallpaperResolved))LaunchApp();
+   if(!cfg.UseImageWallpaper&&!ready&&launchAttempts>0&&launchAttempts<3
+    &&wall.Elapsed.TotalSeconds-lastLaunch>=10)LaunchApp();
    if(!ready&&wall.Elapsed.TotalSeconds>cfg.MaxWaitSeconds+20&&!timeoutReported) {
     timeoutReported=true;Log("wait-timeout-no-window");
     status.Text="未检测到 Codex 窗口。可重试启动，或关闭此窗口查看日志。";
