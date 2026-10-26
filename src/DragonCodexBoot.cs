@@ -180,12 +180,16 @@ namespace DragonCodexBoot {
   private readonly string root;
   private readonly MediaElement media;
   private readonly TextBlock status;
+  private readonly Button retry;
   private readonly DispatcherTimer timer;
   private readonly Stopwatch wall=new Stopwatch();
   private IntPtr host,target,thumbnail,stableHandle,alignedHandle;
   private Bounds initialBounds;
   private double stableSince,lastProbe=-1;
   private bool ready,opened,holding,closing,startedFade,thumbnailFailed;
+  private bool timeoutReported;
+  private int launchAttempts;
+  private double lastLaunch;
   private double endedAt=-1;
   public BootWindow(Config c,string baseDir) {
    cfg=c;root=baseDir;Title=String.IsNullOrWhiteSpace(c.DisplayName)?"Dragon Codex Boot":c.DisplayName;
@@ -211,6 +215,11 @@ namespace DragonCodexBoot {
    skip.Click+=delegate { HandOff(); };
    skip.MouseEnter+=delegate { skip.Opacity=1; };skip.MouseLeave+=delegate { skip.Opacity=.45; };
    grid.Children.Add(skip);Content=grid;
+   retry=new Button { Content="重新打开 Codex",HorizontalAlignment=HorizontalAlignment.Center,
+    VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(20,20,20,72),Padding=new Thickness(18,8,18,8),
+    Background=Brushes.White,Foreground=new SolidColorBrush(Color.FromRgb(118,97,135)),Visibility=Visibility.Collapsed };
+   retry.Click+=delegate { LaunchApp(); };
+   grid.Children.Add(retry);
    PreviewKeyDown+=delegate(object sender,KeyEventArgs e) { if(e.Key==Key.Escape) { e.Handled=true;HandOff(); } };
    SourceInitialized+=delegate {
     host=new WindowInteropHelper(this).Handle;
@@ -257,8 +266,10 @@ namespace DragonCodexBoot {
    try {
     // Shell launches the packaged desktop app; its CLI helper is never used as a UI executable.
     Process.Start(new ProcessStartInfo("explorer.exe",cfg.AppLaunch) { UseShellExecute=true });
-    Log("app-launch-requested");
-   } catch(Exception e) { Log("app-launch-failed: "+e.Message);status.Text="无法自动打开Codex，按Esc退出";status.Visibility=Visibility.Visible; }
+    lastLaunch=wall.Elapsed.TotalSeconds;launchAttempts++;
+    Log("app-launch-requested attempt="+launchAttempts);
+    if(launchAttempts>1) { status.Text="已再次请求打开 Codex，正在等待窗口…";status.Visibility=Visibility.Visible; }
+   } catch(Exception e) { Log("app-launch-failed: "+e.Message);status.Text="无法自动打开 Codex，请检查安装后重试";status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible; }
   }
   private void Probe() {
    double now=wall.Elapsed.TotalSeconds;
@@ -283,19 +294,25 @@ namespace DragonCodexBoot {
   private void Tick(object sender,EventArgs e) {
    if(closing)return;
    Probe();
-   if(wall.Elapsed.TotalSeconds>cfg.MaxWaitSeconds+20) { Log("wait-timeout");HandOff();return; }
+   if(!ready&&launchAttempts>0&&launchAttempts<3&&wall.Elapsed.TotalSeconds-lastLaunch>=10)LaunchApp();
+   if(!ready&&wall.Elapsed.TotalSeconds>cfg.MaxWaitSeconds+20&&!timeoutReported) {
+    timeoutReported=true;Log("wait-timeout-no-window");
+    status.Text="未检测到 Codex 窗口。可重试启动，或关闭此窗口查看日志。";
+    status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible;
+   }
    if(!opened) {
-    if(wall.Elapsed.TotalSeconds>12) { Log("media-open-timeout");HandOff(); }
+    if(wall.Elapsed.TotalSeconds>12&&!timeoutReported) { timeoutReported=true;Log("media-open-timeout");status.Text="视频无法播放，正在等待 Codex 窗口…";status.Visibility=Visibility.Visible;retry.Visibility=Visibility.Visible; }
     return;
    }
    double t=media.Position.TotalSeconds;
    if(!ready&&!startedFade&&t>=cfg.HoldAt) {
     if(!holding) { media.Pause();media.Position=TimeSpan.FromSeconds(cfg.HoldAt);holding=true;Log("waiting-for-window"); }
-    status.Text="Codex正在启动…  Esc跳过";status.Visibility=Visibility.Visible;
+    if(!timeoutReported)status.Text="Codex 正在启动…  Esc 可在窗口出现后跳过动画";
+    status.Visibility=Visibility.Visible;
     return;
    }
    if(holding&&ready) {
-    holding=false;status.Visibility=Visibility.Collapsed;media.Play();Log("window-available");
+    holding=false;status.Visibility=Visibility.Collapsed;retry.Visibility=Visibility.Collapsed;media.Play();Log("window-available");
    }
    if(ready&&t>=cfg.HoldAt)AlignTarget();
    if(t>=cfg.TransitionStart&&ready) {
@@ -318,15 +335,18 @@ namespace DragonCodexBoot {
    if(endedAt>=0&&wall.Elapsed.TotalSeconds-endedAt>.25)HandOff();
   }
   private void HandOff() {
-   if(closing)return;closing=true;
-   timer.Stop();DropThumbnail();
+   if(closing)return;
    IntPtr app=Native.FindApp(cfg);
    if(app!=IntPtr.Zero) {
+    closing=true;timer.Stop();DropThumbnail();
     if(Native.IsIconic(app))Native.ShowWindow(app,9);
     // Removes the covering window and hands input to the real application.
     Close();Native.SetForegroundWindow(app);Log("handed-off-to-real-window");
    } else {
-    Close();Log("closed-without-window");
+    Log("handoff-requested-without-window");
+    status.Text="Codex 窗口尚未出现，正在重试启动…";status.Visibility=Visibility.Visible;
+    retry.Visibility=Visibility.Visible;
+    if(wall.Elapsed.TotalSeconds-lastLaunch>=3)LaunchApp();
    }
   }
   private void Log(string s) {
